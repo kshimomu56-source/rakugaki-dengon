@@ -90,7 +90,12 @@ input[type=text]:focus,select:focus{outline:none;border-color:var(--accent)}
 .board{display:block;background:#fff;border:2px solid var(--ink);border-radius:12px;touch-action:none;cursor:crosshair;box-sizing:border-box;max-width:100%}
 .shot{display:block;width:100%;max-width:100%;height:auto;background:#fff;border:2px solid var(--ink);border-radius:12px;box-sizing:border-box}
 /* 描く画面：ページ全体を固定し、上＝お題、中＝キャンバス、下＝道具と完成ボタン */
-body.drawmode{overflow:hidden;overscroll-behavior:none}
+body.drawmode{overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body.drawmode .wrap{padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+.board,.canvasbox,.drawtop{touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.drawbar .swatches,.drawbar .toolrow{touch-action:pan-x}
+button,.btn,.sw,.tool{touch-action:manipulation}
+.backcard{flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap}
 body.drawmode .wrap{height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));box-sizing:border-box;padding-block:8px;gap:8px;overflow:hidden}
 body.drawmode #chatfab{display:none}
 .drawtop{display:flex;flex-direction:column;gap:6px;flex:0 0 auto;min-width:0}
@@ -98,13 +103,14 @@ body.drawmode #chatfab{display:none}
 .refbox{display:flex;flex-direction:column;align-items:center;gap:4px}
 .refimg{display:block;max-height:18dvh;max-width:100%;background:#fff;border:2px solid var(--ink);border-radius:10px;cursor:zoom-in}
 .refimg.big{max-height:42dvh;cursor:zoom-out}
-.canvasbox{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center}
+.canvasbox{flex:1 1 0;min-height:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .drawbar{flex:0 0 auto;display:flex;flex-direction:column;gap:8px;background:var(--card);border:2px solid var(--ink);border-radius:14px;padding:8px 10px;min-width:0}
 .drawbar .tools{gap:6px;min-width:0}
 .drawbar .swatches,.drawbar .toolrow{flex-wrap:nowrap;overflow-x:auto;padding:5px}
 .drawbar .sw,.drawbar .tool{flex:0 0 auto}
-.drawact{display:flex;gap:8px;align-items:center;justify-content:space-between}
-.drawact .btn.primary{flex:1;max-width:320px;margin-left:auto}
+.drawact{display:flex;gap:8px;align-items:center;justify-content:space-between;min-width:0}
+.drawact .toolrow{flex:1;min-width:0}
+.drawact .btn.primary{flex:0 0 auto;padding-inline:22px}
 .tools{display:flex;flex-direction:column;gap:10px}
 .swatches{display:flex;flex-wrap:wrap;gap:6px}
 .sw{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
@@ -143,7 +149,7 @@ body.drawmode #chatfab{display:none}
 .mdot{width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;color:#fff;font-size:10px;font-weight:900;flex:0 0 18px}
 .msg .mt{background:var(--bubble);border-radius:12px;padding:6px 10px;overflow-wrap:anywhere;font-weight:500}
 .msg.mine .mt{background:var(--accent);color:var(--accent-ink)}
-.quick{display:flex;gap:6px;padding:6px 10px 0;overflow-x:auto}
+.quick{display:flex;flex-wrap:wrap;gap:6px;padding:6px 10px 0}
 .quick button{flex:0 0 auto;font:inherit;font-size:13px;font-weight:700;border:2px solid var(--line);background:var(--field);color:var(--ink);border-radius:999px;padding:2px 10px;cursor:pointer}
 .chatform{display:flex;gap:6px;padding:8px 10px 10px}
 .chatform input{flex:1;min-width:0;padding:8px 10px}
@@ -249,7 +255,7 @@ body.drawmode #chatfab{display:none}
 [data-skin="yoruno"] .btn.sun{border:0;background:var(--tint);color:var(--tint-ink)}
 [data-skin="yoruno"] .btn.small{font-size:13px;padding:7px 15px;box-shadow:none}
 [data-skin="yoruno"] .btn.big{font-size:17px;padding:13px 28px}
-[data-skin="yoruno"] .logo .btn.ghost,[data-skin="yoruno"] .wrap > .row .btn.ghost{background:rgba(255,255,255,.07);color:var(--fg-page);border-color:rgba(255,255,255,.16)}
+[data-skin="yoruno"] .logo .btn.ghost,[data-skin="yoruno"] .wrap > .row .btn.ghost,[data-skin="yoruno"] .drawtop .btn.ghost{background:rgba(255,255,255,.07);color:var(--fg-page);border-color:rgba(255,255,255,.16)}
 [data-skin="yoruno"] input[type=text],[data-skin="yoruno"] select{border:1px solid var(--line);border-radius:14px;background:var(--field)}
 [data-skin="yoruno"] input[type=text]:focus,[data-skin="yoruno"] select:focus{border-color:var(--accent-deep);box-shadow:0 0 0 3px rgba(185,167,236,.35)}
 [data-skin="yoruno"] .seg button,[data-skin="yoruno"] .pl,[data-skin="yoruno"] .room{border:1px solid var(--line);border-radius:16px}
@@ -417,11 +423,8 @@ function route(){
     if (code){
       if (S.homeUnsub){ S.homeUnsub(); S.homeUnsub=null; }
       if (S.savedUnsub){ S.savedUnsub(); S.savedUnsub=null; }
-      const onErr = e => { console.warn(e); toast('接続が切れました。ページを開き直してね'); };
-      S.subs.push(S.db.doc('games/'+code).onSnapshot(s=>{ S.game = s.exists ? s.data() : null; S.gameLoaded=true; render(); }, onErr));
-      S.subs.push(S.db.collection(`games/${code}/players`).onSnapshot(q=>{ const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.players=o; render(); }, onErr));
-      S.subs.push(S.db.collection(`games/${code}/entries`).onSnapshot(q=>{ const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.entries=o; render(); }, onErr));
-      S.subs.push(S.db.collection(`games/${code}/live`).onSnapshot(q=>{ const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.live=o; if(cur.api && cur.api.live) cur.api.live(); }, e=>console.warn(e)));
+      subscribeGame(code);
+      if (!am) lsSet('last', code);
     }
   }
   if (!code && !S.savedUnsub){
@@ -441,6 +444,28 @@ function route(){
   }
   render();
 }
+
+function subscribeGame(code){
+  S.subs.forEach(u=>{try{u()}catch(e){}}); S.subs=[];
+  const onErr = e => { console.warn(e); toast('接続が切れました。画面を開き直すと戻れます'); };
+  S.subs.push(S.db.doc('games/'+code).onSnapshot(s=>{ S.game = s.exists ? s.data() : null; S.gameLoaded=true; render(); }, onErr));
+  S.subs.push(S.db.collection(`games/${code}/players`).onSnapshot(q=>{ const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.players=o; render(); }, onErr));
+  S.subs.push(S.db.collection(`games/${code}/entries`).onSnapshot(q=>{ const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.entries=o; render(); }, onErr));
+  S.subs.push(S.db.collection(`games/${code}/live`).onSnapshot(q=>{ const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.live=o; if(cur.api && cur.api.live) cur.api.live(); }, e=>console.warn(e)));
+}
+/* ほかのアプリから戻ってきたら、止まっていた通信をつなぎ直す（描きかけの絵は残す） */
+let hiddenAt=0;
+function reconnect(){
+  if (!S.ready) return;
+  if (S.code) subscribeGame(S.code);
+  else { if (S.homeUnsub){ S.homeUnsub(); S.homeUnsub=null; } if (S.savedUnsub){ S.savedUnsub(); S.savedUnsub=null; } route(); }
+  const k=S.chatKey; S.chatKey=undefined; S.chatKey=k; chat.setCode(k);
+}
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ hiddenAt=Date.now(); return; } if(hiddenAt && Date.now()-hiddenAt>3000) reconnect(); });
+window.addEventListener('pageshow',e=>{ if(e.persisted) reconnect(); });
+document.addEventListener('gesturestart',e=>{ if(document.body.classList.contains('drawmode')) e.preventDefault(); });
+document.addEventListener('dblclick',e=>{ if(document.body.classList.contains('drawmode')) e.preventDefault(); });
+window.addEventListener('online',()=>reconnect());
 
 let cur = { key:null, api:null };
 function clearTimers(){ S.timers.forEach(t=>{ if(t && t.ro){ t.ro.disconnect(); return; } clearInterval(t); clearTimeout(t); }); S.timers=[]; }
@@ -508,13 +533,20 @@ home(root){
   timeSel.addEventListener('change',()=>drawSec=+timeSel.value);
   const codeIn = h('input',{type:'text',id:'joincode',maxlength:'4',placeholder:'ABCD',autocomplete:'off',style:'text-transform:uppercase;letter-spacing:.2em;font-weight:900'});
   const needNick = () => { const v=nick.value.trim(); if(!v){ toast('先に名前を入れてね'); nick.focus(); return null; } lsSet('nick',v); return v; };
-  async function create(){
+  async function create(e){
     const nk=needNick(); if(!nk) return;
     if (!S.canWrite){ toast('この共有設定では部屋を作れません'); return; }
-    let code; for (let i=0;i<5;i++){ code=genCode(); const s=await S.db.doc('games/'+code).get(); if(!s.exists) break; }
-    await safe(S.db.doc('games/'+code).set({code, mode, drawSec, textSec: drawSec?45:0, hostId:S.uid, hostNick:nk, phase:'lobby', createdAt:Date.now(), order:[], revealChain:0, revealStep:0}));
-    await safe(S.db.doc(`games/${code}/players/${S.uid}`).set({nick:nk, joinedAt:Date.now()}));
-    location.hash=code;
+    const btn=e && e.currentTarget; if(btn){ btn.disabled=true; btn.textContent='つくっています…'; }
+    try {
+      let code;
+      for (let i=0;i<5;i++){ code=genCode(); let s=null; try { s=await S.db.doc('games/'+code).get(); } catch(err){ console.warn(err); break; } if(!s.exists) break; }
+      await S.db.doc('games/'+code).set({code, mode, drawSec, textSec: drawSec?45:0, hostId:S.uid, hostNick:nk, phase:'lobby', createdAt:Date.now(), order:[], revealChain:0, revealStep:0});
+      await S.db.doc(`games/${code}/players/${S.uid}`).set({nick:nk, joinedAt:Date.now()});
+      location.hash=code;
+    } catch(err){
+      console.warn(err);
+      toast('部屋をつくれませんでした（'+((err&&err.message)||'通信エラー').slice(0,60)+'）。通信を確認して、もう一度押してね');
+    } finally { if(btn && document.body.contains(btn)){ btn.disabled=false; btn.textContent='部屋をつくる'; } }
   }
   function join(code){
     const nk=needNick(); if(!nk) return;
@@ -523,11 +555,18 @@ home(root){
     S.autoJoin=code; location.hash=code;
   }
   codeIn.addEventListener('keydown',e=>{ if(e.key==='Enter') join(); });
-  const list = h('div',{class:'list'}), gallery = h('div',{class:'gallery'});
+  const list = h('div',{class:'list'}), gallery = h('div',{class:'gallery'}), backEl = h('div');
+  (async()=>{ const last=lsGet('last'); if(!last) return;
+    try { const sn=await S.db.doc('games/'+last).get(); if(!sn.exists) return; const g=sn.data();
+      const inGame=(g.order||[]).includes(S.uid); if(g.next || g.phase==='done' || (g.phase!=='lobby' && !inGame)) return;
+      backEl.replaceChildren(h('div',{class:'card backcard'}, h('div',{style:'min-width:0'}, h('b',{},'参加中のゲームがあります'), h('p',{class:'muted',style:'margin:0;font-size:14px'},'部屋 '+last+'・'+(g.phase==='lobby'?'スタート待ち':'ゲーム中'))),
+        h('button',{class:'btn primary',type:'button',onclick:()=>{ location.hash=last; }},'ゲームに戻る')));
+    } catch(e){} })();
   root.append(
     header(),
     h('div',{class:'hero'}, h('p',{class:'sub'},'お題を絵にして、その絵を見てまた絵にして。最後にどう変わったかをみんなで見よう。'),
       ),
+    backEl,
     h('div',{class:'card has-peek'}, h('img',{class:'yo-only peek',src:CHARA.peekKiss,alt:'',width:'500',height:'344'}), h('label',{class:'lbl',for:'nick'},'あなたの名前'), nick),
     h('div',{class:'grid2'},
       h('div',{class:'card'}, h('h2',{},'コードで参加'), h('p',{class:'muted',style:'margin:0;font-size:14px'},'招待リンクがないときは、ホストの画面に出ている4文字を入力'),
@@ -535,7 +574,7 @@ home(root){
         h('h2',{style:'margin-top:6px'},'募集中の部屋'), list),
       h('div',{class:'card'}, h('h2',{}, deco('pencil'), '部屋をつくる'), modeSeg,
         h('label',{class:'lbl',for:'drawsec'},'描く時間'), timeSel,
-        h('button',{class:'btn',onclick:create},'部屋をつくる'))),
+        h('button',{class:'btn',type:'button',onclick:create},'部屋をつくる'))),
     h('div',{class:'card'}, h('h2',{},'みんなのアルバム'),
       h('p',{class:'muted',style:'margin:0;font-size:14px'},'保存したゲームをいつでも見返せます。はじめての人は、ここで遊び方の雰囲気をつかんでね。'), gallery),
     h('div',{class:'howto'},
@@ -669,7 +708,7 @@ task(root,v){
     setTimeout(()=>inp.focus(),50);
     startTimer(sec);
   } else {
-    const pad=makePad();
+    const pad=makePad(720, 900);
     if (g.live===true){
       let sentVer=-1, busy=false;
       const liveRef=S.db.doc(`games/${S.code}/live/${S.uid}`);
@@ -698,11 +737,13 @@ task(root,v){
     root.replaceChildren();
     const box=h('div',{class:'canvasbox'}, pad.canvas);
     root.append(
-      h('div',{class:'drawtop'}, h('div',{class:'bar'}, h('span',{class:'step'},`${R+1} / ${n}ターン・${labels[kind]}`), sec?timerBox:null), topContent),
+      h('div',{class:'drawtop'}, h('div',{class:'bar'}, h('span',{class:'step'},`${R+1} / ${n}ターン・${labels[kind]}`),
+        h('span',{class:'row',style:'gap:8px;flex-wrap:nowrap'}, h('button',{class:'btn small ghost',type:'button',onclick:()=>chat.open()},'チャット'), sec?timerBox:null)), topContent),
       box,
-      h('div',{class:'drawbar'}, pad.tools,
-        h('div',{class:'drawact'}, h('button',{class:'btn small ghost',type:'button',onclick:()=>chat.open()},'チャット'),
-          h('button',{class:'btn primary big',type:'button',onclick:finish},'完成！'))));
+      h('div',{class:'drawbar'}, pad.swatches,
+        h('div',{class:'drawact'}, pad.toolRow, h('button',{class:'btn primary',type:'button',onclick:finish},'完成！'))));
+    // 空いている場所の形に合わせてキャンバスの縦横比を決める（まだ何も描いていないので作り直せる）
+    { const r=box.getBoundingClientRect(); if(r.width>0 && r.height>0){ const ratio=Math.max(0.75, Math.min(1.75, r.height/r.width)); pad.resize(720, Math.round(720*ratio)); } }
     const fit=()=>{ const r=box.getBoundingClientRect(); if(!r.width||!r.height) return;
       const w=Math.floor(Math.min(r.width, r.height*pad.W/pad.H)); pad.canvas.style.width=w+'px'; pad.canvas.style.height=Math.floor(w*pad.H/pad.W)+'px'; };
     if (window.ResizeObserver){ const ro=new ResizeObserver(fit); ro.observe(box); S.timers.push({ro}); }
@@ -905,17 +946,19 @@ async function again(){
 }
 
 /* ---------- drawing pad ---------- */
-function makePad(){
-  const W=720, H=900;
+function makePad(W=720, H=900){
+  let small;
   const canvas=h('canvas',{class:'board',width:W,height:H,'aria-label':'お絵かきキャンバス'});
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
   ctx.fillStyle='#FFFFFF'; ctx.fillRect(0,0,W,H);
   let color=COLORS[0], size=8, tool='pen', drawing=false, last=null, dirty=false, ver=0; const undo=[];
   const snap=()=>{ undo.push(ctx.getImageData(0,0,W,H)); if(undo.length>25) undo.shift(); ver++; };
-  const small=document.createElement('canvas'); small.width=320; small.height=400;
+  small=document.createElement('canvas'); small.width=320; small.height=Math.round(320*H/W);
   const pos=e=>{ const r=canvas.getBoundingClientRect(); return {x:(e.clientX-r.left)*W/r.width, y:(e.clientY-r.top)*H/r.height}; };
   function stroke(a,b){ ctx.strokeStyle= tool==='eraser'?'#FFFFFF':color; ctx.lineWidth= tool==='eraser'?size*2.5:size; ctx.lineCap='round'; ctx.lineJoin='round';
     ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+  ['touchstart','touchmove','touchend'].forEach(t=>canvas.addEventListener(t,e=>{ if(e.cancelable) e.preventDefault(); },{passive:false}));
+  canvas.addEventListener('contextmenu',e=>e.preventDefault());
   canvas.addEventListener('pointerdown',e=>{
     e.preventDefault(); const p=pos(e); snap(); dirty=true;
     if (tool==='fill'){ flood(Math.floor(p.x),Math.floor(p.y)); return; }
@@ -952,8 +995,9 @@ function makePad(){
       h('button',{class:'tool',type:'button',onclick:()=>{ snap(); ctx.fillStyle='#FFFFFF'; ctx.fillRect(0,0,W,H); }},'全部消す'));
   }
   paint();
-  return { canvas, W, H, tools:h('div',{class:'tools'}, sw, toolRow), dirty:()=>dirty, ver:()=>ver,
-    thumb(){ const c=small.getContext('2d'); c.drawImage(canvas,0,0,320,400); return small.toDataURL('image/jpeg',.6); },
+  return { canvas, get W(){return W;}, get H(){return H;}, swatches:sw, toolRow, tools:h('div',{class:'tools'}, sw, toolRow),
+    resize(w,hh){ if(dirty) return; W=w; H=hh; canvas.width=W; canvas.height=H; ctx.fillStyle='#FFFFFF'; ctx.fillRect(0,0,W,H); small.height=Math.round(320*H/W); undo.length=0; }, dirty:()=>dirty, ver:()=>ver,
+    thumb(){ const c=small.getContext('2d'); c.drawImage(canvas,0,0,small.width,small.height); return small.toDataURL('image/jpeg',.6); },
     export(){ let q=.8, u=canvas.toDataURL('image/jpeg',q); while(u.length>220000 && q>.3){ q-=.15; u=canvas.toDataURL('image/jpeg',q); } return u; } };
 }
 
@@ -971,7 +1015,7 @@ const chat = (() => {
   function sync(){ const l=locked(); $('#chatlock').hidden=!l; $('#chatquick').hidden=l; input.disabled=l; $('#chatform').querySelector('button').disabled=l; }
   async function send(t){
     t=(t||'').trim().slice(0,100); if(!t || !S.code || locked()) return;
-    if (Date.now()-lastSend<800) return; lastSend=Date.now();
+    if (Date.now()-lastSend<300) return; lastSend=Date.now();
     const nick = nickOf(S.uid)!=='？' ? nickOf(S.uid) : (lsGet('nick')||'ゲスト');
     if (t===input.value.trim()) input.value='';
     try { await S.db.collection(`games/${S.code}/chat`).add({by:S.uid, nick, text:t, at:Date.now()}); }
@@ -1020,7 +1064,7 @@ if (window.claude) boot(); else window.addEventListener('claude-ready', boot, {o
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc as fdoc, collection as fcol, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot as fsnap, query, orderBy as fOrder, limit as fLimit, where as fWhere } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeFirestore, doc as fdoc, collection as fcol, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot as fsnap, query, orderBy as fOrder, limit as fLimit, where as fWhere } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -1032,18 +1076,19 @@ const firebaseConfig = {
   appId: "1:1097484345226:web:47ec1c5d670dd8f63fb273"
 };
 const app = initializeApp(firebaseConfig);
-const fs = getFirestore(app);
+// iPad の Safari（プライベートリレーやコンテンツブロッカー）でも通信できるよう、必要に応じて別の通信方式に切り替える
+const fs = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
 const auth = getAuth(app);
 
 // Firestore を、ゲーム本体が使う小さなAPIの形に包む
 const wrapDoc = s => ({ id: s.id, exists: s.exists(), data: () => s.data(), metadata: s.metadata });
 const wrapQ = q => ({ docs: q.docs.map(wrapDoc), size: q.size, empty: q.empty });
-const errOf = e => ({ code: e && e.code === 'permission-denied' ? 'invalid_argument' : 'unavailable', message: String(e && e.message) });
+const errOf = e => ({ code: e && e.code === 'permission-denied' ? 'invalid_argument' : 'unavailable', message: String((e && e.code) || (e && e.message) || 'error') });
 function docRef(path){
   const r = fdoc(fs, path);
   return {
     id: r.id, path,
-    get: () => getDoc(r).then(wrapDoc),
+    get: () => getDoc(r).then(wrapDoc).catch(e => { throw errOf(e); }),
     set: d => setDoc(r, d).catch(e => { throw errOf(e); }),
     update: d => updateDoc(r, d).catch(e => { throw errOf(e); }),
     delete: () => deleteDoc(r).catch(e => { throw errOf(e); }),
