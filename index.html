@@ -736,10 +736,18 @@ task(root,v){
       const text = prev && !prev.skipped ? prev.text : '';
       topContent = h('div',{class:'prompt compact'}, h('small',{}, R===1?'お題':'前の人の言葉'), text || '（自由に描いてね）');
     } else { // copy: 前の人の絵だけを見て描く
-      if (prev && prev.img){
-        const img=h('img',{class:'refimg',src:safeImg(prev.img),alt:'前の人の絵（タップで拡大）'});
+      // 前の人が空（スキップなど）なら、さらに前へさかのぼって、残っているいちばん新しい絵を見せる
+      let ref=null, back=0;
+      for (let r=R-1; r>=1; r--){ const e=S.entries[`r${r}_c${chain}`]; if (e && safeImg(e.img)){ ref=e; back=R-r; break; } }
+      const first=S.entries[`r0_c${chain}`];
+      if (ref){
+        const label = back===1 ? '前の人の絵（タップで拡大）' : `${back}人前の絵（タップで拡大）`;
+        const img=h('img',{class:'refimg',src:safeImg(ref.img),alt:label});
         img.addEventListener('click',()=>img.classList.toggle('big'));
-        topContent = h('div',{class:'refbox'}, h('span',{class:'lbl'},'前の人の絵（タップで拡大）'), img);
+        topContent = h('div',{class:'refbox'}, h('span',{class:'lbl'},label), img);
+      } else if (first && !first.skipped && first.text){
+        // 絵がひとつも残っていないときは、最初のお題を描く
+        topContent = h('div',{class:'prompt compact'}, h('small',{},'お題'), first.text);
       } else topContent = h('div',{class:'prompt compact'}, h('small',{},'前の絵がありません'),'自由に描いてね');
     }
     // 描く画面は画面全体に固定（ページがスクロールしないので、うっかり線を引かない）
