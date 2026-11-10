@@ -484,7 +484,8 @@ function view(){
   if (S.albumMode) return {name:'album', key:'album:'+S.code};
   const order=g.order||[], n=order.length, me=order.indexOf(S.uid);
   if (g.next && (me>=0 || S.players[S.uid])){
-    if (!S.jumped){ S.jumped=true; S.timers.push(setTimeout(()=>{ location.hash=g.next; },600)); }
+    // render() がこの直後に clearTimers() するので、S.timers には入れない（入れると消されて止まる）
+    if (!S.jumped){ S.jumped=true; const from=S.code; setTimeout(()=>{ if(S.code===from) location.hash=g.next; },600); }
     return {name:'msg', key:'next', text:'次のゲームへ移動中…'};
   }
   if (g.phase==='lobby') return {name:'lobby', key:'lobby:'+S.code};
