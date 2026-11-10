@@ -91,22 +91,23 @@ input[type=text]:focus,select:focus{outline:none;border-color:var(--accent)}
 .shot{display:block;width:100%;max-width:100%;height:auto;background:#fff;border:2px solid var(--ink);border-radius:12px;box-sizing:border-box}
 /* 描く画面：ページ全体を固定し、上＝お題、中＝キャンバス、下＝道具と完成ボタン */
 body.drawmode{overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-body.drawmode .wrap{padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+body.drawmode .wrap{max-width:none;padding-left:max(4px,env(safe-area-inset-left,0px));padding-right:max(4px,env(safe-area-inset-right,0px))}
 .board,.canvasbox,.drawtop{touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .drawbar .swatches,.drawbar .toolrow{touch-action:pan-x}
 button,.btn,.sw,.tool{touch-action:manipulation}
 .backcard{flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap}
-body.drawmode .wrap{height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));box-sizing:border-box;padding-block:8px;gap:8px;overflow:hidden}
+body.drawmode .wrap{height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));box-sizing:border-box;padding-block:4px;gap:4px;overflow:hidden}
 body.drawmode #chatfab{display:none}
-.drawtop{display:flex;flex-direction:column;gap:6px;flex:0 0 auto;min-width:0}
-.prompt.compact{padding:6px 12px;font-size:clamp(16px,4vw,20px)}
-.refbox{display:flex;flex-direction:column;align-items:center;gap:4px}
-.refimg{display:block;max-height:18dvh;max-width:100%;background:#fff;border:2px solid var(--ink);border-radius:10px;cursor:zoom-in}
+.drawtop{display:flex;flex-direction:column;gap:4px;flex:0 0 auto;min-width:0}
+.drawtop .bar{min-height:0}
+.prompt.compact{padding:4px 10px;font-size:clamp(15px,3.8vw,19px);line-height:1.35}
+.refbox{display:flex;flex-direction:column;align-items:center;gap:2px}
+.refimg{display:block;max-height:14dvh;max-width:100%;background:#fff;border:2px solid var(--ink);border-radius:10px;cursor:zoom-in}
 .refimg.big{max-height:42dvh;cursor:zoom-out}
 .canvasbox{flex:1 1 0;min-height:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.drawbar{flex:0 0 auto;display:flex;flex-direction:column;gap:8px;background:var(--card);border:2px solid var(--ink);border-radius:14px;padding:8px 10px;min-width:0}
+.drawbar{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;background:var(--card);border:2px solid var(--ink);border-radius:14px;padding:4px 8px;min-width:0}
 .drawbar .tools{gap:6px;min-width:0}
-.drawbar .swatches,.drawbar .toolrow{flex-wrap:nowrap;overflow-x:auto;padding:5px}
+.drawbar .swatches,.drawbar .toolrow{flex-wrap:nowrap;overflow-x:auto;padding:3px}
 .drawbar .sw,.drawbar .tool{flex:0 0 auto}
 .drawact{display:flex;gap:8px;align-items:center;justify-content:space-between;min-width:0}
 .drawact .toolrow{flex:1;min-width:0}
@@ -445,10 +446,15 @@ function route(){
   render();
 }
 
+const subRetry={n:0,t:null};
 function subscribeGame(code){
   S.subs.forEach(u=>{try{u()}catch(e){}}); S.subs=[];
-  const onErr = e => { console.warn(e); toast('接続が切れました。画面を開き直すと戻れます'); };
-  S.subs.push(S.db.doc('games/'+code).onSnapshot(s=>{ S.game = s.exists ? s.data() : null; S.gameLoaded=true; render(); }, onErr));
+  clearTimeout(subRetry.t); subRetry.t=null;
+  // 通信が切れても、少し待って自動でつなぎ直す（何度も失敗したときだけお知らせ）
+  const onErr = e => { console.warn(e); if (subRetry.t) return; subRetry.n++;
+    if (subRetry.n>=3) toast('通信が不安定です。つなぎ直しています…');
+    subRetry.t=setTimeout(()=>{ subRetry.t=null; if (S.code===code) subscribeGame(code); }, Math.min(15000, 1000*2**subRetry.n)); };
+  S.subs.push(S.db.doc('games/'+code).onSnapshot(s=>{ subRetry.n=0; S.game = s.exists ? s.data() : null; S.gameLoaded=true; render(); }, onErr));
   S.subs.push(S.db.collection(`games/${code}/players`).onSnapshot(q=>{ const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.players=o; render(); }, onErr));
   S.subs.push(S.db.collection(`games/${code}/entries`).onSnapshot(q=>{ const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.entries=o; render(); }, onErr));
   S.subs.push(S.db.collection(`games/${code}/live`).onSnapshot(q=>{ const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.live=o; if(cur.api && cur.api.live) cur.api.live(); }, e=>console.warn(e)));
@@ -743,7 +749,7 @@ task(root,v){
       h('div',{class:'drawbar'}, pad.swatches,
         h('div',{class:'drawact'}, pad.toolRow, h('button',{class:'btn primary',type:'button',onclick:finish},'完成！'))));
     // 空いている場所の形に合わせてキャンバスの縦横比を決める（まだ何も描いていないので作り直せる）
-    { const r=box.getBoundingClientRect(); if(r.width>0 && r.height>0){ const ratio=Math.max(0.75, Math.min(1.75, r.height/r.width)); pad.resize(720, Math.round(720*ratio)); } }
+    { const r=box.getBoundingClientRect(); if(r.width>0 && r.height>0){ const ratio=Math.max(0.6, Math.min(2.2, r.height/r.width)); pad.resize(720, Math.round(720*ratio)); } }
     const fit=()=>{ const r=box.getBoundingClientRect(); if(!r.width||!r.height) return;
       const w=Math.floor(Math.min(r.width, r.height*pad.W/pad.H)); pad.canvas.style.width=w+'px'; pad.canvas.style.height=Math.floor(w*pad.H/pad.W)+'px'; };
     if (window.ResizeObserver){ const ro=new ResizeObserver(fit); ro.observe(box); S.timers.push({ro}); }
